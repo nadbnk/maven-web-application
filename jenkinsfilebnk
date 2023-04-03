@@ -1,0 +1,32 @@
+node{ 
+ 
+ def mavenHome = tool name: "maven3.9.1"
+ 
+ echo "Job name is: ${env.JOB_NAME}"
+ echo "Build Number is: ${env.BUILD_NUMBER}"
+ echo "Jenkins Home dir is: ${env.JENKINS_HOME}"
+ 
+ stage('CheckOutCode')
+ {
+ git branch: 'dev', credentialsId: 'fccd6172-2b3b-4398-9f4d-278407200117', url: 'https://github.com/nadbnk/maven-web-application.git'   
+ }
+ 
+ stage('Build')
+ {
+  sh "${mavenHome}/bin/mvn clean package"
+ }
+ stage('SonarQubeReport')
+ {
+  sh "${mavenHome}/bin/mvn clean package sonar:sonar"
+ }
+ stage('UploadArtifactsIntoNexus')
+ {
+  sh "${mavenHome}/bin/mvn clean package sonar:sonar deploy"
+ }
+ sshagent(['c46f6b3e-56f0-41b8-99c5-3d4acbe5a3e3']) 
+ {
+ sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@3.109.208.55:/opt/apache-tomcat-10.1.7/webapps/"
+ 
+    // some block
+ }
+}
