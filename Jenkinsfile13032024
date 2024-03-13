@@ -1,0 +1,26 @@
+node{
+    def mavenHome=tool name:"maven"
+    stage ('checkoutcode'){
+        git branch: 'qa', credentialsId: 'git-credentials', url: 'https://github.com/nadbnk/maven-web-application.git'
+    }
+    stage ('build'){
+        sh "${mavenHome}/bin/mvn clean package"
+    }
+    stage ('SonarQubeReport'){
+        sh "${mavenHome}/bin/mvn clean sonar:sonar"
+    }
+    stage ('UploadArtifactsintoNexus'){
+        sh "${mavenHome}/bin/mvn clean deploy"
+    }
+    stage ('deployApplicationintoTomcatServer'){
+        sshagent(['143f752b-4e3d-4355-a1bf-4a6504c3edfe']) {
+            sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.234.35.69:/opt/tomcat/webapps"
+    }
+    }
+    stage ('emailnotification'){
+        emailext body: '''Build Over...!!
+
+        Regards,
+        Nadeem Khan''', subject: 'Build Over...!!', to: 'devopsawsvideosbnk@gmail.com'
+    }
+}
