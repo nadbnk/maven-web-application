@@ -1,1 +1,45 @@
 
+pipeline{
+    agent any
+        tools{
+            maven "maven"
+        }
+        options{
+            timestamps()
+            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '', numToKeepStr: '5'))
+        }
+        triggers{
+            pollSCM('* * * * * ')
+            //cron('* * * * *')
+        }
+        stages{
+            stage ('checkoutcode'){
+                steps{
+                    git branch: 'uat', credentialsId: 'git-credentials', url: 'https://github.com/nadbnk/maven-web-application.git'
+                }
+            }
+            stage ('build'){
+                steps{
+                    sh "mvn clean package"
+                }
+            }
+            stage ('sonarqubereport'){
+                steps{
+                    sh "mvn clean sonar:sonar"
+                }
+            }
+            stage ('uploadartifactsintonexus'){
+                steps{
+                    sh "mvn clean deploy"
+                }
+            }
+            stage ('deployapplicatiointotocmcatserver'){
+                steps{
+                    sshagent(['143f752b-4e3d-4355-a1bf-4a6504c3edfe']) {
+                    sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@13.234.35.69:/opt/tomcat/webapps/"
+                }
+                }
+            }
+        }
+    
+}
